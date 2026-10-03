@@ -1,0 +1,16 @@
+# Local macOS metadata
+.DS_Store
+._*
+
+# Generated firmware binaries and local build paths
+firmware/**/build/
+
+# Notes containing real device identifiers (keep locally)
+/firmware/address/
+
+# Local credentials and environment settings
+.env
+.env.*
+!.env.example
+*.pem
+*.key
