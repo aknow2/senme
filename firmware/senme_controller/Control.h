@@ -11,8 +11,8 @@ constexpr uint32_t kOnStepUs = 500;
 constexpr uint32_t kCycleMs = 110000;
 constexpr uint32_t kMotorRampMs = 15000;
 constexpr uint32_t kEditStopMs = kMotorRampMs;
-constexpr float kMotorStartPercent = 45.0f;
-constexpr float kEditStopPercent = 45.0f;
+constexpr float kMotorStartPercent = 55.0f;
+constexpr float kEditStopPercent = 55.0f;
 constexpr uint32_t kLongPressMs = 3000;
 constexpr uint32_t kDebounceMs = 25;
 constexpr uint32_t kButtonMaxSampleGapMs = 100;
@@ -108,11 +108,11 @@ inline Output breatheOutput(uint32_t elapsedMs) {
 inline Output startingOutput(uint32_t elapsedMs, const Settings& settings, unsigned phase) {
   const float target = float(settings.motorPercent);
   const float from = target < kMotorStartPercent ? target : kMotorStartPercent;
-  return {LedPattern::Steady, 0.70f,
+  return {LedPattern::Steady, float(elapsedMs) / kMotorRampMs,
           from + (target - from) * float(elapsedMs) / kMotorRampMs, phase};
 }
 
-// Hold outputs already at/below the cutoff; never accelerate to reach 45%.
+// Hold outputs already at/below the cutoff; never accelerate to reach 55%.
 inline float stoppingPercent(float from, uint32_t elapsedMs) {
   if (elapsedMs >= kMotorRampMs) return 0;
   const float cutoff = from < kEditStopPercent ? from : kEditStopPercent;
@@ -155,12 +155,13 @@ inline Output outputFor(Mode mode, uint32_t elapsedMs, const Settings& settings)
 }
 
 constexpr uint32_t kRemoteRunMs = 60000;
+constexpr uint32_t kRemoteCooldownMs = 3000;
 constexpr uint32_t kRemoteRampMs = kMotorRampMs;
 
 // A single request slot, not a queue. Guard all accesses when shared with Wi-Fi.
 class RemoteRun {
  public:
-  enum class State { Disabled, EditStopping, Ready, Pending, Running };
+  enum class State { Disabled, EditStopping, Ready, Pending, Running, Cooldown };
 
   State state() const { return state_; }
   bool busy() const {
@@ -195,6 +196,9 @@ class RemoteRun {
   }
 
   void tick(uint32_t now) {
+    if (state_ == State::Cooldown && uint32_t(now - readyAt_) >= kRemoteCooldownMs) {
+      state_ = State::Ready;  // Preserve the fade phase from the actual stop.
+    }
     if (state_ == State::Pending) {
       startedAt_ = now;
       state_ = State::Running;
@@ -211,7 +215,8 @@ class RemoteRun {
   // Call only after the main loop has applied zero PWM to the motor.
   void confirmStopped(uint32_t now) {
     if (!stopDue(now)) return;
-    enable(now);
+    readyAt_ = now;
+    state_ = State::Cooldown;
   }
 
   Output output(uint32_t now, const Settings& settings) const {
@@ -220,7 +225,7 @@ class RemoteRun {
           : stoppingPercent(editStopFrom_, uint32_t(now - startedAt_));
       return editStopDue(now) ? breatheOutput(0) : Output{LedPattern::Blink, 0, percent, 4};
     }
-    if (state_ == State::Ready) return breatheOutput(uint32_t(now - readyAt_));
+    if (state_ == State::Ready || state_ == State::Cooldown) return breatheOutput(uint32_t(now - readyAt_));
     if (stopDue(now)) return breatheOutput(0);
     if (state_ != State::Running) return {LedPattern::Off, 0, 0, 0};
     const uint32_t t = now - startedAt_;

@@ -1,14 +1,15 @@
-# Local macOS metadata
+node_modules/
+dist/
 .DS_Store
-._*
-
-# Generated firmware binaries and local build paths
+*.tsbuildinfo
 firmware/**/build/
+*.[sS][tT][lL]
 
-# Notes containing real device identifiers (keep locally)
+# Local device notes, temporary exports, and credentials
 /firmware/address/
-
-# Local credentials and environment settings
+/tmp/
+/output/
+._*
 .env
 .env.*
 !.env.example

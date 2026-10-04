@@ -1,0 +1,117 @@
+{
+  "motor_gear_38_hourglass_v2_cover.stl": {
+    "watertight": true,
+    "winding_consistent": true,
+    "volume_mm3": 7048.465388040313,
+    "bounds_mm": [
+      [
+        -34.5,
+        -34.5,
+        0.0
+      ],
+      [
+        34.5,
+        34.5,
+        3.5
+      ]
+    ],
+    "components": 1,
+    "triangles": 5452
+  },
+  "motor_gear_38_hourglass_v2_gear.stl": {
+    "watertight": true,
+    "winding_consistent": true,
+    "volume_mm3": 31369.58212748785,
+    "bounds_mm": [
+      [
+        -41.291,
+        -41.3743,
+        0.0
+      ],
+      [
+        41.291,
+        41.3743,
+        13.0
+      ]
+    ],
+    "components": 1,
+    "triangles": 9056
+  },
+  "motor_gear_38_hourglass_v2_hub.stl": {
+    "watertight": true,
+    "winding_consistent": true,
+    "volume_mm3": 11162.268938089719,
+    "bounds_mm": [
+      [
+        -26.8,
+        -25.4883,
+        0.0
+      ],
+      [
+        26.8,
+        25.4883,
+        10.7
+      ]
+    ],
+    "components": 1,
+    "triangles": 3070
+  },
+  "motor_gear_38_hourglass_v2_pin.stl": {
+    "watertight": true,
+    "winding_consistent": true,
+    "volume_mm3": 169.97222814037684,
+    "bounds_mm": [
+      [
+        -2.5,
+        -4.0,
+        0.0
+      ],
+      [
+        2.5,
+        4.0,
+        11.5
+      ]
+    ],
+    "components": 1,
+    "triangles": 1872,
+    "shaft_diameter_mm": 3.1
+  },
+  "motor_gear_38_hourglass_v2_ring.stl": {
+    "watertight": true,
+    "winding_consistent": true,
+    "volume_mm3": 609.5862019197322,
+    "bounds_mm": [
+      [
+        -10.0,
+        -10.0,
+        0.0
+      ],
+      [
+        10.0,
+        10.0,
+        2.3
+      ]
+    ],
+    "components": 1,
+    "triangles": 1390
+  },
+  "motor_gear_38_hourglass_v2_roller.stl": {
+    "watertight": true,
+    "winding_consistent": true,
+    "volume_mm3": 281.44399328878,
+    "bounds_mm": [
+      [
+        -3.7,
+        -3.7,
+        0.0
+      ],
+      [
+        3.7,
+        3.7,
+        8.5
+      ]
+    ],
+    "components": 1,
+    "triangles": 1440
+  }
+}

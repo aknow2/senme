@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#10100f" />
+    <title>Senme Simulator — Rhombic Double Spiral</title>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="masthead">
+        <a class="back-link" href="./">SENME / SIMULATOR</a>
+        <div class="masthead-note">SIMULATOR — SPIRAL TILING</div>
+      </header>
+
+      <section class="stage" aria-label="螺旋タイル球体の3Dプレビュー">
+        <canvas id="scene"></canvas>
+
+        <aside class="control-panel" aria-label="形状の調整">
+          <div class="panel-heading">
+            <span>Geometry</span>
+            <output id="tile-total">1770 pieces</output>
+          </div>
+
+          <div id="tile-highlight-panel" class="tile-highlight-panel">
+            <div class="tile-highlight-heading">
+              <b id="highlight-heading">マスを赤枠表示</b>
+              <span>Indexは0始まり</span>
+            </div>
+            <div id="highlight-fields" class="tile-highlight-fields">
+              <label id="highlight-spiral-field">
+                <span>渦番号</span>
+                <select id="highlight-spiral" aria-label="赤枠表示する渦番号">
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                </select>
+              </label>
+              <label>
+                <span id="highlight-index-label">Index</span>
+                <input
+                  id="highlight-index"
+                  type="number"
+                  min="0"
+                  step="1"
+                  inputmode="numeric"
+                  placeholder="0"
+                  aria-describedby="highlight-status"
+                />
+              </label>
+            </div>
+            <output id="highlight-status" role="status">Indexを入力してください</output>
+            <small id="highlight-note" class="tile-highlight-note">プレビューのみ・赤枠はSTLに含まれません</small>
+          </div>
+
+          <label class="control-row">
+            <span><b>球体直径</b><output id="diameter-value">600 mm</output></span>
+            <input id="diameter" type="range" min="300" max="1000" step="10" value="600" />
+          </label>
+
+          <label class="control-row">
+            <span><b>最大厚さ（黒）</b><output id="tile-thickness-value">3.0 mm</output></span>
+            <input id="tile-thickness" type="range" min="1" max="10" step="0.5" value="3" />
+          </label>
+
+          <label class="control-row">
+            <span><b>最小厚さ（白）</b><output id="lithophane-min-thickness-value">0.8 mm</output></span>
+            <input id="lithophane-min-thickness" type="range" min="0.2" max="2.9" step="0.1" value="0.8" />
+          </label>
+
+          <label class="control-row" title="ピース外周の縁の高さです。縁の幅は最大0.3 mmです">
+            <span><b>縁の高さ</b><output id="lithophane-rim-thickness-value">3.0 mm</output></span>
+            <input id="lithophane-rim-thickness" type="range" min="0.8" max="3" step="0.1" value="3" />
+            <small>最小厚さ以上・最大厚さ以下</small>
+          </label>
+
+          <label class="control-row" title="小さい値ほど高精細になりますが、STLサイズと出力時間が増えます">
+            <span><b>リソファン解像度</b><output id="lithophane-resolution-value">1.5 mm</output></span>
+            <input id="lithophane-resolution" type="range" min="0.5" max="3" step="0.1" value="1.5" />
+            <small>小さいほど高精細・データ量大</small>
+          </label>
+
+          <label class="control-row">
+            <span><b>上側の開口径</b><output id="top-opening-value">120 mm</output></span>
+            <input id="top-opening" type="range" min="0" max="480" step="10" value="120" />
+          </label>
+
+          <label class="control-row">
+            <span><b>下側の開口径</b><output id="bottom-opening-value">120 mm</output></span>
+            <input id="bottom-opening" type="range" min="0" max="480" step="10" value="120" />
+          </label>
+
+          <label class="control-row">
+            <span><b>横方向</b><output id="around-value">30</output></span>
+            <input id="around" type="range" min="12" max="48" step="2" value="30" />
+          </label>
+
+          <label class="control-row">
+            <span><b>ひし形の段数</b><output id="bands-value">30</output></span>
+            <input id="bands" type="range" min="10" max="42" step="2" value="30" />
+          </label>
+
+          <label class="control-row">
+            <span><b>螺旋バイアス</b><output id="twist-value">0.18</output></span>
+            <input id="twist" type="range" min="-0.8" max="0.8" step="0.01" value="0.18" />
+          </label>
+
+          <label class="control-row">
+            <span><b>接合クリアランス</b><output id="joint-clearance-value">0.30 mm</output></span>
+            <input id="joint-clearance" type="range" min="0" max="1" step="0.05" value="0.3" />
+            <small>隣り合う2枚の合計隙間</small>
+          </label>
+
+          <label class="control-row">
+            <span><b>分解表示</b><output id="explode-value">0%</output></span>
+            <input id="explode" type="range" min="0" max="35" step="1" value="0" />
+          </label>
+
+          <label class="control-row">
+            <span><b>回転速度</b><output id="rotation-speed-value">10°/s</output></span>
+            <input id="rotation-speed" type="range" min="0" max="360" step="1" value="10" />
+          </label>
+
+          <label class="control-row">
+            <span><b>リフレッシュレート</b><output id="refresh-rate-value">60 Hz</output></span>
+            <input id="refresh-rate" type="range" min="10" max="120" step="5" value="60" />
+          </label>
+
+          <div class="texture-picker">
+            <div class="texture-heading">
+              <b>菱形テクスチャ</b>
+              <span id="texture-summary">渦1: 0 / 渦2: 0</span>
+            </div>
+            <button id="open-texture-dialog" class="texture-settings-button" type="button">テクスチャ設定を開く</button>
+            <p>2つの螺旋ごとに、複数画像を順番に繰り返して貼り付けます。片方が未登録なら、登録済み側の画像を両方に使用します。</p>
+          </div>
+
+          <div class="project-backup-panel">
+            <div class="texture-heading">
+              <b>設定・画像バックアップ</b>
+              <span>ZIP</span>
+            </div>
+            <div class="backup-actions">
+              <button id="export-project-backup" type="button">Export</button>
+              <label for="import-project-backup">Import</label>
+              <input id="import-project-backup" type="file" accept=".zip,application/zip" />
+            </div>
+            <output id="project-backup-status" role="status"></output>
+            <p>現在の設定値と螺旋別の画像・並び順を保存します。Importすると、現在の設定と画像をZIPの内容で置き換えます。</p>
+          </div>
+
+          <div class="stl-export-panel">
+            <label class="stl-export-mode-row">
+              <span>出力単位</span>
+              <select id="stl-export-mode">
+                <option value="individual">pieceごと</option>
+                <option value="panels">球面パネル</option>
+              </select>
+            </label>
+            <div id="panel-export-settings" class="panel-export-settings" hidden>
+              <label>
+                <span>1パネルの最大piece数</span>
+                <input id="panel-target-piece-count" type="number" min="1" max="64" step="1" value="4" />
+              </label>
+              <label>
+                <span>溝下のバック層</span>
+                <span><input id="panel-backing-thickness" type="number" min="0.1" max="3" step="0.1" value="0.6" /> mm</span>
+                <small>0.1 mm以上・縁の高さ以下（同値時はSTL安定化のため0.01 mmの溝を保持）</small>
+              </label>
+              <label>
+                <span>内側ののりしろ</span>
+                <span><input id="panel-glue-allowance" type="number" min="0" max="10" step="0.1" value="0" /> mm</span>
+                <small>中央のリソファン厚は変えず、全pieceの裏側外周を内側へ延長</small>
+              </label>
+              <output id="panel-export-summary">隣接するpieceを最大4個ずつ、コンパクトに結合</output>
+              <small>余りは最大数以下のパネルとして出力します。赤い境界線はプレビュー専用でSTLには含まれません。各STLは球面の曲率を保持し、piece境界は表面の溝として残ります。</small>
+            </div>
+            <button id="export-stl-directory" type="button">全タイルを個別STLで出力</button>
+            <output id="stl-export-status" role="status">フォルダへ1枚ずつ保存</output>
+          </div>
+
+          <div class="panel-actions">
+            <button id="rotation-toggle" type="button" aria-pressed="true">
+              <span class="status-dot"></span>Auto rotate
+            </button>
+            <button id="reset-view" type="button">Reset view</button>
+          </div>
+        </aside>
+
+        <div class="interaction-hint">DRAG TO ORBIT <i></i> SCROLL TO ZOOM</div>
+      </section>
+    </main>
+
+    <dialog id="texture-dialog" aria-labelledby="texture-dialog-title">
+      <div class="dialog-header">
+        <div>
+          <p>TEXTURE SEQUENCE</p>
+          <h2 id="texture-dialog-title">螺旋別テクスチャ設定</h2>
+        </div>
+        <button id="close-texture-dialog-x" class="dialog-close-x" type="button" aria-label="閉じる">×</button>
+      </div>
+
+      <p class="dialog-description">リストの上から順に各タイルへ表示し、最後まで進むと先頭へ戻ります。1:1のPNG/JPGのみ追加できます。</p>
+
+      <div class="spiral-texture-grid">
+        <section class="spiral-texture-column" aria-labelledby="spiral-1-title">
+          <div class="spiral-column-heading">
+            <div>
+              <span>SPIRAL 01</span>
+              <h3 id="spiral-1-title">第1螺旋</h3>
+            </div>
+            <label class="dialog-file-button" for="spiral-1-files">画像を追加</label>
+            <input id="spiral-1-files" type="file" multiple accept=".png,.jpg,.jpeg,image/png,image/jpeg" />
+          </div>
+          <ol id="spiral-1-list" class="texture-list"></ol>
+          <p id="spiral-1-empty" class="texture-empty">画像は未設定です</p>
+        </section>
+
+        <section class="spiral-texture-column" aria-labelledby="spiral-2-title">
+          <div class="spiral-column-heading">
+            <div>
+              <span>SPIRAL 02</span>
+              <h3 id="spiral-2-title">第2螺旋</h3>
+            </div>
+            <label class="dialog-file-button" for="spiral-2-files">画像を追加</label>
+            <input id="spiral-2-files" type="file" multiple accept=".png,.jpg,.jpeg,image/png,image/jpeg" />
+          </div>
+          <ol id="spiral-2-list" class="texture-list"></ol>
+          <p id="spiral-2-empty" class="texture-empty">画像は未設定です</p>
+        </section>
+      </div>
+
+      <div class="dialog-footer">
+        <span id="texture-dialog-status" role="status"></span>
+        <div class="dialog-footer-actions">
+          <button id="reset-all-textures" class="dialog-danger-button" type="button" disabled>All Reset</button>
+          <button id="close-texture-dialog" type="button">完了</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="reset-textures-confirm-dialog" aria-labelledby="reset-textures-confirm-title" aria-describedby="reset-textures-confirm-description">
+      <div class="confirm-dialog-body">
+        <p>CONFIRM RESET</p>
+        <h2 id="reset-textures-confirm-title">すべてのテクスチャを削除しますか？</h2>
+        <p id="reset-textures-confirm-description">
+          第1螺旋・第2螺旋に登録された画像と並び順をすべて削除します。この操作は元に戻せません。
+        </p>
+        <div class="confirm-dialog-actions">
+          <button id="cancel-reset-textures" type="button">キャンセル</button>
+          <button id="confirm-reset-textures" class="dialog-danger-button" type="button">すべて削除</button>
+        </div>
+      </div>
+    </dialog>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

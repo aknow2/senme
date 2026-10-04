@@ -1,0 +1,21 @@
+{
+  "watertight": true,
+  "winding_consistent": true,
+  "components": 1,
+  "bounds_mm": [
+    [
+      -25.3,
+      -25.3,
+      0.0
+    ],
+    [
+      27.6485,
+      24.0891,
+      13.0
+    ]
+  ],
+  "spring_width_mm": 1.4,
+  "previous_spring_width_mm": 1.2,
+  "physical_testing": "not performed",
+  "initial_assembly_intersection": "empty"
+}

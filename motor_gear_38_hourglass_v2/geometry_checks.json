@@ -1,0 +1,18 @@
+{
+  "insert": true,
+  "shift": true,
+  "hub": true,
+  "free": true,
+  "wedge": true,
+  "path": true,
+  "tilt_analysis": {
+    "model": "rigid roller between parallel floor and lid; no deformation",
+    "roller_height_mm": 8.5,
+    "roller_end_diameter_mm": 7.4,
+    "cavity_height_mm": 9.0,
+    "first_contact_tilt_degrees": 4.038058970790681,
+    "formula": "8.5*cos(theta) + 7.4*sin(theta) = 9.0",
+    "physical_testing": "not performed"
+  },
+  "lid_path": true
+}

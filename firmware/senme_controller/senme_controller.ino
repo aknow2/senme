@@ -5,10 +5,11 @@
 #include <WiFi.h>
 #include <esp_now.h>
 #include <esp_wifi.h>
-#include <driver/mcpwm_prelude.h>
+#include <driver/rmt_tx.h>
 #include <esp_arduino_version.h>
 #include <soc/soc_caps.h>
 #include "Control.h"
+#include "LedWaveform.h"
 
 #if ESP_ARDUINO_VERSION_MAJOR < 3
 #error "Use Arduino-ESP32 3.x."
@@ -22,6 +23,9 @@ constexpr uint8_t MOTOR_PIN = 26;
 constexpr uint8_t ENCODER_CLK_PIN = 32;
 constexpr uint8_t ENCODER_DT_PIN = 33;
 constexpr uint8_t BUTTON_PIN = 27;
+// This controller appears to release LOW and press HIGH; verify with button logs.
+// Use LOW for a conventional normally-open switch connected to GND.
+constexpr uint8_t BUTTON_PRESSED_LEVEL = HIGH;
 constexpr int ENCODER_DIRECTION = 1;  // Change to -1 if clockwise decreases.
 constexpr int ENCODER_EDGES_PER_CLICK = 4;  // Some encoders need 2.
 constexpr uint32_t MOTOR_PWM_HZ = 20000;
@@ -31,7 +35,7 @@ constexpr uint32_t LED_BREATHE_PERIOD_US = 1000;  // 1 kHz dimming PWM.
 constexpr uint8_t ESPNOW_CHANNEL = 1;  // Sender must use the same channel.
 
 senme::Settings settings;
-senme::Mode mode = senme::Mode::Sequence;
+senme::Mode mode = senme::Mode::EspNow;
 senme::Button button;
 senme::SaveIndicator saveIndicator;
 senme::ModeIndicator modeIndicator;
@@ -46,16 +50,13 @@ unsigned lastPhase = 0;
 portMUX_TYPE remoteMux = portMUX_INITIALIZER_UNLOCKED;
 senme::RemoteRun remoteRun;
 
-mcpwm_timer_handle_t ledTimer = nullptr;
-mcpwm_oper_handle_t ledOperator = nullptr;
-mcpwm_cmpr_handle_t ledComparator = nullptr;
-mcpwm_gen_handle_t ledGenerator = nullptr;
-uint32_t ledPeriodUs = LED_BREATHE_PERIOD_US;
-uint32_t ledLastCompare = 1;
-int ledForce = 0;
-bool ledSettling = false;
-uint32_t ledChangedAtUs = 0;
-uint32_t ledSettleUs = 0;
+rmt_channel_handle_t ledChannel = nullptr;
+rmt_encoder_handle_t ledEncoder = nullptr;
+rmt_symbol_word_t ledSymbols[2]{};
+bool ledEnabled = false;
+uint32_t ledPeriodUs = 0;
+uint32_t ledOnUs = 0;
+bool ledDimBlink = false;
 
 portMUX_TYPE encoderMux = portMUX_INITIALIZER_UNLOCKED;
 volatile uint8_t encoderPrevious = 0;
@@ -109,8 +110,9 @@ void fail(const char* message) {
   bool zeroAccepted = motorReady ? ledcWrite(MOTOR_PIN, 0) : true;
   if (!motorReady) digitalWrite(MOTOR_PIN, LOW);
   if (zeroAccepted) appliedMotorPercent = 0;
-  if (ledGenerator) mcpwm_generator_set_force_level(ledGenerator, 0, true);
-  else digitalWrite(LED_PIN, LOW);
+  if (ledChannel && ledEnabled) rmt_disable(ledChannel);
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
   if (rampWriteFailed) Serial.println("ERROR: motor ramp write failed; smooth deceleration not confirmed.");
   Serial.println(zeroAccepted ? "FAULT LATCHED: motor zero command accepted; reset required."
                               : "FAULT LATCHED: motor zero command failed; retrying; reset required.");
@@ -144,68 +146,51 @@ void beginEspNow() {
                 WiFi.macAddress().c_str(), ESPNOW_CHANNEL);
 }
 
+void writeLed(uint32_t periodUs, uint32_t onUs, bool dimBlink = false) {
+  if (periodUs == ledPeriodUs && onUs == ledOnUs && dimBlink == ledDimBlink) return;
+  if (ledEnabled) {
+    check(rmt_disable(ledChannel), "LED stop previous waveform");
+    ledEnabled = false;
+  }
+  rmt_carrier_config_t carrier = {};
+  carrier.frequency_hz = senme::kBlinkCarrierHz;
+  carrier.duty_cycle = senme::kBlinkLedDuty;
+  check(rmt_apply_carrier(ledChannel, dimBlink && senme::kBlinkLedDuty < 1.0f ? &carrier : nullptr), "LED carrier");
+  check(rmt_encoder_reset(ledEncoder), "LED encoder reset");
+  const auto envelope = senme::ledEnvelope(periodUs, onUs);
+  for (unsigned i = 0; i < envelope.count / 2; ++i) {
+    ledSymbols[i].duration0 = envelope.pulses[2 * i].duration;
+    ledSymbols[i].level0 = envelope.pulses[2 * i].high;
+    ledSymbols[i].duration1 = envelope.pulses[2 * i + 1].duration;
+    ledSymbols[i].level1 = envelope.pulses[2 * i + 1].high;
+  }
+  check(rmt_enable(ledChannel), "LED enable");
+  ledEnabled = true;
+  rmt_transmit_config_t transmit = {};
+  transmit.loop_count = -1;
+  transmit.flags.queue_nonblocking = true;
+  check(rmt_transmit(ledChannel, ledEncoder, ledSymbols,
+                    envelope.count / 2 * sizeof(ledSymbols[0]), &transmit), "LED waveform");
+  ledPeriodUs = periodUs;
+  ledOnUs = onUs;
+  ledDimBlink = dimBlink;
+}
+
 void forceLed(int level) {
-  if (ledForce == level) return;
-  check(mcpwm_generator_set_force_level(ledGenerator, level, true), "LED force level");
-  ledForce = level;
+  writeLed(LED_BREATHE_PERIOD_US, level > 0 ? LED_BREATHE_PERIOD_US : 0);
 }
 
 void beginLed() {
-  mcpwm_timer_config_t timerConfig = {};
-  timerConfig.group_id = 0;
-  timerConfig.clk_src = MCPWM_TIMER_CLK_SRC_DEFAULT;
-  timerConfig.resolution_hz = 1000000;  // One tick = one microsecond.
-  timerConfig.count_mode = MCPWM_TIMER_COUNT_MODE_UP;
-  timerConfig.period_ticks = ledPeriodUs;
-  timerConfig.flags.update_period_on_empty = true;
-  check(mcpwm_new_timer(&timerConfig, &ledTimer), "LED timer allocation");
-
-  mcpwm_operator_config_t operatorConfig = {};
-  operatorConfig.group_id = 0;
-  check(mcpwm_new_operator(&operatorConfig, &ledOperator), "LED operator allocation");
-  check(mcpwm_operator_connect_timer(ledOperator, ledTimer), "LED timer connection");
-
-  mcpwm_comparator_config_t compareConfig = {};
-  compareConfig.flags.update_cmp_on_tez = true;
-  check(mcpwm_new_comparator(ledOperator, &compareConfig, &ledComparator), "LED comparator allocation");
-  check(mcpwm_comparator_set_compare_value(ledComparator, 1), "LED initial compare");
-
-  mcpwm_generator_config_t generatorConfig = {};
-  generatorConfig.gen_gpio_num = LED_PIN;
-  check(mcpwm_new_generator(ledOperator, &generatorConfig, &ledGenerator), "LED generator allocation");
-  check(mcpwm_generator_set_force_level(ledGenerator, 0, true), "LED initial off");
-  check(mcpwm_generator_set_action_on_timer_event(ledGenerator,
-        MCPWM_GEN_TIMER_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, MCPWM_TIMER_EVENT_EMPTY,
-                                     MCPWM_GEN_ACTION_HIGH)), "LED rising edge");
-  check(mcpwm_generator_set_action_on_compare_event(ledGenerator,
-        MCPWM_GEN_COMPARE_EVENT_ACTION(MCPWM_TIMER_DIRECTION_UP, ledComparator,
-                                       MCPWM_GEN_ACTION_LOW)), "LED falling edge");
-  check(mcpwm_timer_enable(ledTimer), "LED timer enable");
-  check(mcpwm_timer_start_stop(ledTimer, MCPWM_TIMER_START_NO_STOP), "LED timer start");
-}
-
-void writeLed(uint32_t periodUs, uint32_t onUs) {
-  if (periodUs != ledPeriodUs) {
-    // Keep the output low until both period and comparator shadow registers
-    // have latched. No delay(): the motor and button continue updating.
-    forceLed(0);
-    ledSettleUs = max(periodUs, ledPeriodUs) + 100;
-    check(mcpwm_timer_set_period(ledTimer, periodUs), "LED period update");
-    ledPeriodUs = periodUs;
-    ledChangedAtUs = micros();
-    ledSettling = true;
-  }
-  const uint32_t compare = constrain(onUs, 1u, periodUs - 1);
-  if (compare != ledLastCompare) {
-    check(mcpwm_comparator_set_compare_value(ledComparator, compare), "LED pulse width update");
-    ledLastCompare = compare;
-  }
-  if (ledSettling) {
-    if (uint32_t(micros() - ledChangedAtUs) < ledSettleUs) return;
-    ledSettling = false;
-  }
-  // Explicit endpoints avoid a narrow unwanted pulse at 0% or 100%.
-  forceLed(onUs == 0 ? 0 : (onUs >= periodUs ? 1 : -1));
+  rmt_tx_channel_config_t channel = {};
+  channel.gpio_num = gpio_num_t(LED_PIN);
+  channel.clk_src = RMT_CLK_SRC_DEFAULT;
+  channel.resolution_hz = 1000000;
+  channel.mem_block_symbols = 64;
+  channel.trans_queue_depth = 1;
+  check(rmt_new_tx_channel(&channel, &ledChannel), "LED RMT channel");
+  rmt_copy_encoder_config_t encoder = {};
+  check(rmt_new_copy_encoder(&encoder, &ledEncoder), "LED RMT encoder");
+  forceLed(0);
 }
 
 void reportSettings() {
@@ -287,6 +272,8 @@ void setup() {
   pinMode(ENCODER_CLK_PIN, INPUT_PULLUP);
   pinMode(ENCODER_DT_PIN, INPUT_PULLUP);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
+  Serial.printf("BUTTON: GPIO27=%d; pressed level=%d (HIGH=1, LOW=0)\n",
+                digitalRead(BUTTON_PIN), BUTTON_PRESSED_LEVEL);
 
   storageReady = preferences.begin("senme", false);
   if (storageReady) {
@@ -305,8 +292,13 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(ENCODER_CLK_PIN), encoderChanged, CHANGE);
   attachInterrupt(digitalPinToInterrupt(ENCODER_DT_PIN), encoderChanged, CHANGE);
   sequenceStartedAt = millis();
-  Serial.println("Mode: SEQUENCE; click: next mode; hold 3 seconds in edit mode: save");
+  Serial.println("Mode: ESP-NOW; click: next mode; hold 3 seconds in edit mode: save");
   reportSettings();
+  // Hardware is initialized and the motor is off before accepting START.
+  portENTER_CRITICAL(&remoteMux);
+  remoteRun.enable(millis());
+  portEXIT_CRITICAL(&remoteMux);
+  Serial.println("ESP-NOW: READY (waiting for START)");
 }
 
 void loop() {
@@ -315,7 +307,7 @@ void loop() {
   while (uint32_t(now - sequenceStartedAt) >= senme::kCycleMs) {
     sequenceStartedAt += senme::kCycleMs;
   }
-  const auto event = button.update(digitalRead(BUTTON_PIN) == LOW, now);
+  const auto event = button.update(digitalRead(BUTTON_PIN) == BUTTON_PRESSED_LEVEL, now);
   if (button.samplingInterrupted()) {
     Serial.println("BUTTON: sampling gap >100ms; gesture discarded; release and press again");
   }
@@ -343,6 +335,10 @@ void loop() {
   if (oldRemoteState == senme::RemoteRun::State::Pending) {
     Serial.println("ESP-NOW: RUNNING (60 seconds)");
   }
+  if (oldRemoteState == senme::RemoteRun::State::Cooldown &&
+      remoteSnapshot.state() == senme::RemoteRun::State::Ready) {
+    Serial.println("ESP-NOW: READY (waiting for START)");
+  }
 
   auto output = mode == senme::Mode::EspNow
                           ? remoteSnapshot.output(now, settings)
@@ -364,7 +360,7 @@ void loop() {
   const int saveLevel = saveIndicator.level(now);
   const int modeLevel = modeIndicator.level(now);
   if (saveLevel >= 0) {
-    // Force full on/off without changing PWM timing or blocking motor control.
+    // Indicator pulses retain full brightness; motor control continues.
     forceLed(saveLevel);
   } else if (modeLevel >= 0) {
     forceLed(modeLevel);
@@ -374,7 +370,7 @@ void loop() {
              output.led == senme::LedPattern::Steady) {
     writeLed(LED_BREATHE_PERIOD_US, lroundf(output.brightness * LED_BREATHE_PERIOD_US));
   } else {
-    writeLed(senme::kBlinkPeriodUs, settings.ledOnUs);
+    writeLed(senme::kBlinkPeriodUs, settings.ledOnUs, true);
   }
   if (mode == senme::Mode::EspNow && remoteSnapshot.editStopDue(now)) {
     portENTER_CRITICAL(&remoteMux);
@@ -386,7 +382,7 @@ void loop() {
     portENTER_CRITICAL(&remoteMux);
     remoteRun.confirmStopped(millis());
     portEXIT_CRITICAL(&remoteMux);
-    Serial.println("ESP-NOW: STOPPED; READY (waiting for START)");
+    Serial.println("ESP-NOW: STOPPED; COOLDOWN (3 seconds; START ignored)");
   }
   if (mode == senme::Mode::Sequence && output.phase != lastPhase) {
     lastPhase = output.phase;

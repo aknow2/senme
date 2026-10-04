@@ -1,0 +1,19 @@
+{
+  "watertight": true,
+  "winding_consistent": true,
+  "components": 1,
+  "bounds_mm": [
+    [
+      -25.2,
+      -25.2,
+      0.0
+    ],
+    [
+      27.6485,
+      24.1994,
+      13.0
+    ]
+  ],
+  "volume_mm3": 10590.360220829842,
+  "physical_testing": "not performed"
+}

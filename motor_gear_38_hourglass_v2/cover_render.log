@@ -1,0 +1,19 @@
+ECHO: "PROTOTYPE: equal load sharing, torque, release and lifetime unverified"
+ECHO: "Roller count / diameter / height", 6, 6.2, 8.5
+ECHO: "Cam web mm", 4.13933
+ECHO: "Free gap / wedge angle", 2.01528, 14.6143
+ECHO: "Insertion hub / outer radial clearance", 0.672721, 0.3
+ECHO: "Top guide inner clearance", 0.31
+Geometries in cache: 20
+Geometry cache size in bytes: 486880
+CGAL Polyhedrons in cache: 6
+CGAL cache size in bytes: 11301056
+Total rendering time: 0:00:07.324
+   Top level object is a 3D object:
+   Simple:        yes
+   Vertices:     2720
+   Halfedges:    8320
+   Edges:        4160
+   Halffacets:   2890
+   Facets:       1445
+   Volumes:         2

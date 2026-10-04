@@ -1,5 +1,6 @@
 // 配線用の箱と外かぶせ蓋 / 単位: mm
 // 内寸 120 x 120 x 30。各側面に直径10mmの横向き貫通穴を3個。
+// 蓋の内側の段差を箱の上端に載せ、上に25mmの空間を追加。
 // 「箱付き」は「蓋付き」と解釈。蓋不要なら render_part = "box"。
 // layout: 箱と蓋を印刷向きで並べる / assembled: 蓋を閉じた状態
 render_part = "layout"; // [layout, box, lid, assembled]
@@ -13,6 +14,7 @@ hole_diameter = 10;
 holes_per_side = 3;
 hole_height = 15; // 内側の床から穴中心まで
 lid_thickness = 2;
+lid_headroom = 25; // 箱の上端から蓋の内側天面までの空間
 lid_skirt = 6; // 箱の外側にかぶる長さ
 lid_wall = 2;
 lid_clearance = 0.3; // 箱と蓋の片側の隙間。プリンタに合わせて調整
@@ -26,10 +28,12 @@ lid_inner_width = outer_width + 2 * lid_clearance;
 lid_inner_depth = outer_depth + 2 * lid_clearance;
 lid_width = lid_inner_width + 2 * lid_wall;
 lid_depth = lid_inner_depth + 2 * lid_wall;
+lid_height = lid_thickness + lid_headroom + lid_skirt;
 
 assert(inner_width > 0 && inner_depth > 0 && inner_height > 0);
 assert(wall > 0 && bottom > 0 && lid_wall > 0 && lid_thickness > 0);
 assert(lid_clearance >= 0 && lid_skirt > 0);
+assert(lid_headroom > 0);
 assert(holes_per_side >= 1 && floor(holes_per_side) == holes_per_side);
 assert(hole_diameter > 0 && hole_height > hole_diameter / 2);
 assert(hole_height + hole_diameter / 2 < inner_height - lid_skirt,
@@ -63,8 +67,12 @@ module box() {
 module lid() {
     difference() {
         translate([-lid_width / 2, -lid_depth / 2, 0])
-            cube([lid_width, lid_depth, lid_thickness + lid_skirt]);
-        translate([-lid_inner_width / 2, -lid_inner_depth / 2, lid_thickness])
+            cube([lid_width, lid_depth, lid_height]);
+        // 上部の空間は箱の内寸と同じ。開口の幅が変わる段差で箱を受ける。
+        translate([-inner_width / 2, -inner_depth / 2, lid_thickness])
+            cube([inner_width, inner_depth, lid_headroom + eps]);
+        translate([-lid_inner_width / 2, -lid_inner_depth / 2,
+                   lid_thickness + lid_headroom])
             cube([lid_inner_width, lid_inner_depth, lid_skirt + eps]);
     }
 }
@@ -78,11 +86,13 @@ if (render_part == "layout") {
 if (render_part == "assembled") {
     color("LightSteelBlue") box();
     color("LightGray", 0.65)
-        translate([0, 0, box_height + lid_thickness])
+        translate([0, 0, box_height + lid_headroom + lid_thickness])
             rotate([180, 0, 0]) lid();
 }
 
 echo("内寸", [inner_width, inner_depth, inner_height]);
 echo("箱の外寸", [outer_width, outer_depth, box_height]);
-echo("蓋の外寸", [lid_width, lid_depth, lid_thickness + lid_skirt]);
+echo("蓋の外寸", [lid_width, lid_depth, lid_height]);
+echo("箱の上端から蓋の内側天面まで / 閉蓋時の内側高さ",
+     [lid_headroom, inner_height + lid_headroom]);
 echo("配線穴の総数 / 直径", [4 * holes_per_side, hole_diameter]);

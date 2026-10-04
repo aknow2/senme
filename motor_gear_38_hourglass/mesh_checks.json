@@ -1,0 +1,126 @@
+{
+  "parts": {
+    "motor_gear_38_hourglass_cover.stl": {
+      "watertight": true,
+      "winding_consistent": true,
+      "volume_mm3": 6763.47701111756,
+      "bounds_mm": [
+        [
+          -34.5,
+          -34.5,
+          0.0
+        ],
+        [
+          34.5,
+          34.5,
+          2.0
+        ]
+      ],
+      "components": 1,
+      "triangles": 3212
+    },
+    "motor_gear_38_hourglass_gear.stl": {
+      "watertight": true,
+      "winding_consistent": true,
+      "volume_mm3": 31369.58212748785,
+      "bounds_mm": [
+        [
+          -41.291,
+          -41.3743,
+          0.0
+        ],
+        [
+          41.291,
+          41.3743,
+          13.0
+        ]
+      ],
+      "components": 1,
+      "triangles": 9056
+    },
+    "motor_gear_38_hourglass_hub.stl": {
+      "watertight": true,
+      "winding_consistent": true,
+      "volume_mm3": 13357.869621190452,
+      "bounds_mm": [
+        [
+          -26.1131,
+          -26.7633,
+          0.0
+        ],
+        [
+          26.8,
+          26.3928,
+          10.7
+        ]
+      ],
+      "components": 1,
+      "triangles": 3622
+    },
+    "motor_gear_38_hourglass_pin.stl": {
+      "watertight": true,
+      "winding_consistent": true,
+      "volume_mm3": 68.40031897116246,
+      "bounds_mm": [
+        [
+          -2.4,
+          -2.4,
+          0.0
+        ],
+        [
+          2.4,
+          2.4,
+          8.7
+        ]
+      ],
+      "components": 1,
+      "triangles": 1568
+    },
+    "motor_gear_38_hourglass_ring.stl": {
+      "watertight": true,
+      "winding_consistent": true,
+      "volume_mm3": 609.5862019197323,
+      "bounds_mm": [
+        [
+          -10.0,
+          -10.0,
+          0.0
+        ],
+        [
+          10.0,
+          10.0,
+          2.3
+        ]
+      ],
+      "components": 1,
+      "triangles": 1390
+    },
+    "motor_gear_38_hourglass_roller.stl": {
+      "watertight": true,
+      "winding_consistent": true,
+      "volume_mm3": 281.44399328878,
+      "bounds_mm": [
+        [
+          -3.7,
+          -3.7,
+          0.0
+        ],
+        [
+          3.7,
+          3.7,
+          8.5
+        ]
+      ],
+      "components": 1,
+      "triangles": 1440
+    }
+  },
+  "geometry_checks": {
+    "roller_free_intersection": "empty",
+    "roller_pre_wedge_intersection": "empty",
+    "hub_vs_gear_and_cover": "empty",
+    "waist_path_samples": 41,
+    "offset_contours_self_intersections": 0
+  },
+  "physical_testing": "not performed"
+}

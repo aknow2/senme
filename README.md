@@ -1,15 +1,27 @@
-# senme
+# Senme
 
-OpenSCADによる部品設計・STLデータと、ESP32用のLED／モーター制御ファームウェア。
+Senmeの機構設計・ファームウェアと、球体リソファン作成用のsimulatorをまとめたフォルダです。
 
-- ルートの `.scad` / `.stl`：ギア、支持部品、配線ボックスなど。
-- [octagonal_bell](octagonal_bell/README.md)：八角形ベルの設計。
-- [firmware](firmware/README.md)：配線・制御仕様・書き込み手順。
-- [sense_sender](firmware/sense_sender/README.md)：MPU6050の揺れを検出してESP-NOWで開始指令を送るスケッチ。
-- `BOSL2/`：同梱のOpenSCADライブラリ。著作権表示・ライセンスは [BOSL2/LICENSE](BOSL2/LICENSE) を参照してください。
+- ルートの `.scad`・`.stl`・画像、`BOSL2/`、`octagonal_bell/`、`firmware/` などは `../6ro_art/senme` からコピーしています。
+- `simulator/` は `../360li/experimental` を元にした独立したWebアプリです。必要な共通コード・依存関係の設定・テストをすべて内包しています。
 
-## 公開対象と実機利用の注意
+## simulatorの起動
 
-実機のMACアドレスを含む `firmware/address/`、ファームウェアのビルド成果物、ローカル環境設定はGitの追跡対象外です。
+```sh
+cd simulator
+npm ci
+npm run dev
+```
 
-現在のESP-NOW通信は暗号化・送信元認証を行わず、ブロードキャストの開始指令も受け付けます。無線が届く範囲の第三者からの指令で、待機中のモーターが始動する可能性があります。第三者が無線通信できる場所での運用には、通信の認証・暗号化と実機の安全対策を別途検討してください。
+http://127.0.0.1:5174/ を開いてください。詳しい操作・確認方法は [simulator/README.md](simulator/README.md) を参照してください。
+
+## 機構設計とファームウェア
+
+OpenSCADの設計は同梱の `BOSL2/` を使用します。
+ファームウェアの操作・書き込み方法は [firmware/README.md](firmware/README.md) を参照してください。
+
+## 公開対象と通信の注意
+
+実機MACアドレスのメモ、ビルド成果物、STL、作業用の `tmp/`・`output/`、秘密情報を含むローカル設定は公開対象外です。BOSL2のライセンスは [BOSL2/LICENSE](BOSL2/LICENSE) を参照してください。
+
+現在のESP-NOW通信には暗号化・送信元認証がなく、ブロードキャストの開始指令も受け付けます。無線が届く第三者の指令で待機中のモーターが始動する可能性があります。

@@ -16,14 +16,18 @@ void testSequence() {
   assert(near(at(2500).brightness, 1));
   assert(near(at(5000).brightness, 0));
   assert(at(19999).phase == 1);
-  assert(at(20000).phase == 2 && at(20000).motorPercent == 45);
+  assert(at(20000).phase == 2 && at(20000).motorPercent == 55);
   assert(at(20000).led == LedPattern::Steady);
-  assert(near(at(27500).motorPercent, 62.5f));
+  assert(near(at(20000).brightness, 0.0f));
+  assert(near(at(27500).brightness, 0.5f));
+  assert(at(34999).brightness > 0.999f);
+  assert(at(35000).led == LedPattern::Blink);
+  assert(near(at(27500).motorPercent, 67.5f));
   assert(at(34999).phase == 2);
   assert(at(35000).phase == 3 && at(35000).motorPercent == 80);
   assert(at(94999).phase == 3 && at(94999).motorPercent == 80);
   assert(at(95000).phase == 4 && at(95000).motorPercent == 80);
-  assert(near(at(102500).motorPercent, 62.5f));
+  assert(near(at(102500).motorPercent, 67.5f));
   assert(at(109999).phase == 4);
   assert(at(110000).phase == 1 && at(110000).motorPercent == 0);
   assert(near(at(110000).brightness, 0));
@@ -32,7 +36,7 @@ void testSequence() {
     const auto out = at(t);
     assert(out.led == (t < 20000 ? LedPattern::Breathe :
                        t < 35000 ? LedPattern::Steady : LedPattern::Blink));
-    if (t >= 20000 && t < 35000) assert(near(out.brightness, 0.70f));
+    if (t >= 20000 && t < 35000) assert(near(out.brightness, float(t - 20000) / 15000));
     assert(out.brightness >= 0 && out.brightness <= 1);
     assert(out.motorPercent >= 0 && out.motorPercent <= 80);
   }
@@ -50,7 +54,7 @@ void testSequence() {
 
 void testEditing() {
   Settings s;
-  assert(s.motorPercent == 45 && s.motorPercent == kMotorStartPercent && s.motorPercent == kEditStopPercent);
+  assert(s.motorPercent == 55 && s.motorPercent == kMotorStartPercent && s.motorPercent == kEditStopPercent);
   s.adjust(Mode::EditLed, 1);
   assert(s.ledOnUs == 5500);
   s.adjust(Mode::EditLed, -1);
@@ -71,7 +75,7 @@ void testEditing() {
   s.validate();
   assert(s.ledOnUs == 55550);
   s.adjust(Mode::EditMotor, 1);
-  assert(s.motorPercent == 46);
+  assert(s.motorPercent == 56);
   s.adjust(Mode::EditMotor, -10000);
   assert(s.motorPercent == 0);
   s.adjust(Mode::EditMotor, 10000);
@@ -85,14 +89,14 @@ void testEditing() {
   s.ledOnUs = 123;
   s.motorPercent = 101;
   s.validate();
-  assert(s.ledOnUs == 5000 && s.motorPercent == 45);
+  assert(s.ledOnUs == 5000 && s.motorPercent == 55);
 }
 
 void testEditStop() {
   const uint8_t start[] = "START";
   Settings settings;
   for (uint32_t origin : {100u, std::numeric_limits<uint32_t>::max() - 5000}) {
-    for (float maximum : {0.0f, 20.0f, 30.0f, 44.0f, 45.0f, 46.0f, 80.0f, 100.0f}) {
+    for (float maximum : {0.0f, 20.0f, 30.0f, 54.0f, 55.0f, 56.0f, 80.0f, 100.0f}) {
       RemoteRun run;
       run.stopEditing(origin, maximum);
       assert(run.busy() && !run.receive(start, 5));
@@ -105,7 +109,7 @@ void testEditStop() {
         assert(!run.receive(start, 5));
         if (maximum > 0 && elapsed < 15000) {
           assert(!run.editStopDue(origin + elapsed));
-          assert(near(percent, maximum + ((maximum < 45 ? maximum : 45) - maximum) * elapsed / 15000));
+          assert(near(percent, maximum + ((maximum < 55 ? maximum : 55) - maximum) * elapsed / 15000));
           run.confirmEditStopped(origin + elapsed);
           assert(run.busy());
         } else {
@@ -123,21 +127,21 @@ void testEditStop() {
   assert(!stop.active());
   stop.begin(100, 80);
   assert(stop.active() && stop.output(100) == 80);
-  assert(near(stop.output(7600), 62.5f));
-  assert(stop.output(15099) > 45 && !stop.due(15099));
+  assert(near(stop.output(7600), 67.5f));
+  assert(stop.output(15099) > 55 && !stop.due(15099));
   assert(stop.output(15100) == 0 && stop.due(15100));
   stop.finish();
   assert(!stop.active());
   stop.begin(20000, 0);
   assert(!stop.active());
   settings.motorPercent = 80;
-  assert(outputFor(Mode::EditMotor, 0, settings).motorPercent == 45);
-  assert(near(outputFor(Mode::EditMotor, 7500, settings).motorPercent, 62.5f));
+  assert(outputFor(Mode::EditMotor, 0, settings).motorPercent == 55);
+  assert(near(outputFor(Mode::EditMotor, 7500, settings).motorPercent, 67.5f));
   assert(outputFor(Mode::EditMotor, 15000, settings).motorPercent == 80);
   assert(outputFor(Mode::EditMotor, 60000, settings).motorPercent == 80);
   for (uint32_t t = 0; t < 15000; ++t) {
     const auto out = outputFor(Mode::EditMotor, t, settings);
-    assert(out.led == LedPattern::Steady && near(out.brightness, 0.70f));
+    assert(out.led == LedPattern::Steady && near(out.brightness, float(t) / 15000));
   }
   assert(outputFor(Mode::EditMotor, 15000, settings).led == LedPattern::Blink);
 }
@@ -148,7 +152,8 @@ void testRemoteRun() {
   Settings settings;
   settings.motorPercent = 80;
   // Repeat across millis() overflow.
-  for (const uint32_t origin : {100u, std::numeric_limits<uint32_t>::max() - 10000}) {
+  for (const uint32_t origin : {100u, std::numeric_limits<uint32_t>::max() - 10000,
+                                std::numeric_limits<uint32_t>::max() - 62000}) {
     RemoteRun run;
     assert(!run.receive(start, 5));
     run.enable(origin);
@@ -174,18 +179,18 @@ void testRemoteRun() {
     assert(!run.receive(start, 6)); // Burst before loop cannot queue a second run.
     run.tick(origin);
     auto at = [&](uint32_t elapsed) { return run.output(origin + elapsed, settings); };
-    assert(at(0).motorPercent == 45 && at(0).phase == 2);
-    assert(near(at(7500).motorPercent, 62.5f));
+    assert(at(0).motorPercent == 55 && at(0).phase == 2);
+    assert(near(at(7500).motorPercent, 67.5f));
     assert(at(14999).phase == 2);
     assert(at(15000).motorPercent == 80 && at(15000).phase == 3);
     assert(at(44999).phase == 3);
     assert(at(45000).phase == 4 && at(45000).motorPercent == 80);
-    assert(near(at(52500).motorPercent, 62.5f));
+    assert(near(at(52500).motorPercent, 67.5f));
     assert(at(59999).phase == 4);
     for (uint32_t t = 0; t < kRemoteRunMs; ++t) {
       run.tick(origin + t);
       assert(!run.receive(start, 5));
-      if (t < 15000) assert(near(at(t).brightness, 0.70f));
+      if (t < 15000) assert(near(at(t).brightness, float(t) / 15000));
       assert(at(t).motorPercent >= 0 && at(t).motorPercent <= 80);
       assert(at(t).led == (t < 15000 ? LedPattern::Steady : LedPattern::Blink));
     }
@@ -193,24 +198,37 @@ void testRemoteRun() {
     run.tick(origin + 60000);
     assert(run.stopDue(origin + 60000));
     assert(!run.receive(start, 5));
-    // Reception stays blocked until zero PWM is applied, then resumes immediately.
+    // Cooldown starts at the actual stop acknowledgement, not the scheduled end.
     run.confirmStopped(origin + 60123);
-    assert(run.state() == RemoteRun::State::Ready && !run.busy());
+    assert(run.state() == RemoteRun::State::Cooldown && !run.busy());
     assert(at(60123).led == LedPattern::Breathe && near(at(60123).brightness, 0));
     assert(at(62623).motorPercent == 0 && near(at(62623).brightness, 1));
+    for (uint32_t elapsed = 0; elapsed < 3000; ++elapsed) {
+      run.tick(origin + 60123 + elapsed);
+      assert(run.state() == RemoteRun::State::Cooldown);
+      assert(!run.receive(start, 5) && !run.receive(start, 6));
+      assert(at(60123 + elapsed).motorPercent == 0);
+    }
+    run.tick(origin + 63123);
+    assert(run.state() == RemoteRun::State::Ready);
+    assert(near(at(63123).brightness, breatheOutput(3000).brightness));
     run.tick(origin + 100000);
     assert(run.state() == RemoteRun::State::Ready); // No replay of ignored requests.
     assert(run.receive(start, 6)); // Optional trailing NUL accepted.
     run.tick(origin + 100000);
     assert(at(100000).led == LedPattern::Steady);
-    assert(near(at(100000).brightness, 0.70f));
-    assert(at(107500).motorPercent == 62.5f);
+    assert(near(at(100000).brightness, 0.0f));
+    assert(at(107500).motorPercent == 67.5f);
     run.confirmStopped(origin + 115000); // Early acknowledgement cannot reopen reception.
     assert(run.busy() && !run.receive(start, 5));
     run.confirmStopped(origin + 160000);
-    assert(run.receive(start, 5)); // No cooldown, even within this same timestamp.
-    run.tick(origin + 160000);
-    assert(at(160000).motorPercent == 45 && at(160000).phase == 2);
+    assert(!run.receive(start, 5));
+    run.tick(origin + 162999);
+    assert(!run.receive(start, 5));
+    run.tick(origin + 163000);
+    assert(run.receive(start, 5));
+    run.tick(origin + 163000);
+    assert(at(163000).motorPercent == 55 && at(163000).phase == 2);
     run.disable();
     assert(at(107500).motorPercent == 0);
     assert(!run.receive(start, 5));
@@ -284,14 +302,14 @@ void testButton() {
 
 void testStartRampLimits() {
   const uint8_t start[] = "START";
-  for (const uint32_t target : {0u, 20u, 30u, 44u, 45u, 46u, 80u, 100u}) {
+  for (const uint32_t target : {0u, 20u, 30u, 54u, 55u, 56u, 80u, 100u}) {
     Settings settings;
     settings.motorPercent = target;
     RemoteRun run;
     run.enable(0);
     assert(run.receive(start, 5));
     run.tick(0);
-    const float initial = target < 45 ? float(target) : 45.0f;
+    const float initial = target < 55 ? float(target) : 55.0f;
     float previous = initial;
     for (const uint32_t t : {0u, 1u, 7500u, 14999u, 15000u}) {
       const auto sequence = outputFor(Mode::Sequence, 20000 + t, settings);
@@ -373,5 +391,5 @@ int main() {
   testButton();
   testRemoteRun();
   testEditStop();
-  std::cout << "PASS: edit stop, sequence, settings, button, ESP-NOW run/immediate-ready/discard, clock rollover\n";
+  std::cout << "PASS: edit stop, sequence, settings, button, ESP-NOW run/3-second-cooldown/discard, clock rollover\n";
 }
