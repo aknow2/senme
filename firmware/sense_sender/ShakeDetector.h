@@ -5,8 +5,8 @@
 
 namespace sense {
 
-constexpr float kTriggerG = 1.3f;  // Deviation of acceleration magnitude from 1 g.
-constexpr float kQuietG = 1.0f;
+constexpr float kTriggerG = 0.45f;  // Deviation of acceleration magnitude from 1 g.
+constexpr float kQuietG = 0.25f;
 constexpr uint32_t kQuietMs = 3000;
 constexpr uint32_t kMinSendIntervalMs = 3000;
 constexpr unsigned kTriggerSamples = 2;
