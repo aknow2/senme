@@ -154,6 +154,7 @@ inline Output outputFor(Mode mode, uint32_t elapsedMs, const Settings& settings)
   return {LedPattern::Blink, 0, stoppingPercent(float(settings.motorPercent), t - (kCycleMs - kMotorRampMs)), 4};
 }
 
+constexpr uint32_t kRemoteNotifyMs = 1000;
 constexpr uint32_t kRemoteRunMs = 60000;
 constexpr uint32_t kRemoteCooldownMs = 3000;
 constexpr uint32_t kRemoteRampMs = kMotorRampMs;
@@ -161,11 +162,12 @@ constexpr uint32_t kRemoteRampMs = kMotorRampMs;
 // A single request slot, not a queue. Guard all accesses when shared with Wi-Fi.
 class RemoteRun {
  public:
-  enum class State { Disabled, EditStopping, Ready, Pending, Running, Cooldown };
+  enum class State { Disabled, EditStopping, Ready, Pending, Notifying, Running, Cooldown };
 
   State state() const { return state_; }
   bool busy() const {
-    return state_ == State::EditStopping || state_ == State::Pending || state_ == State::Running;
+    return state_ == State::EditStopping || state_ == State::Pending ||
+           state_ == State::Notifying || state_ == State::Running;
   }
   void enable(uint32_t now) { readyAt_ = now; state_ = State::Ready; }
   void disable() { state_ = State::Disabled; }
@@ -201,6 +203,9 @@ class RemoteRun {
     }
     if (state_ == State::Pending) {
       startedAt_ = now;
+      state_ = State::Notifying;
+    } else if (state_ == State::Notifying && uint32_t(now - startedAt_) >= kRemoteNotifyMs) {
+      startedAt_ = now;  // Keep the full motor cycle after notification.
       state_ = State::Running;
     } else if (state_ == State::Ready) {
       // Keep the fade continuous even across repeated millis() rollovers.
@@ -226,6 +231,11 @@ class RemoteRun {
       return editStopDue(now) ? breatheOutput(0) : Output{LedPattern::Blink, 0, percent, 4};
     }
     if (state_ == State::Ready || state_ == State::Cooldown) return breatheOutput(uint32_t(now - readyAt_));
+    if (state_ == State::Notifying) {
+      const uint32_t elapsed = now - startedAt_;
+      const bool on = elapsed < kRemoteNotifyMs && (elapsed * 12 / kRemoteNotifyMs) % 2 == 0;
+      return {LedPattern::Steady, on ? 1.0f : 0.0f, 0, 0};
+    }
     if (stopDue(now)) return breatheOutput(0);
     if (state_ != State::Running) return {LedPattern::Off, 0, 0, 0};
     const uint32_t t = now - startedAt_;

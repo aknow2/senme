@@ -333,6 +333,12 @@ void loop() {
   const auto remoteSnapshot = remoteRun;
   portEXIT_CRITICAL(&remoteMux);
   if (oldRemoteState == senme::RemoteRun::State::Pending) {
+    saveIndicator.cancel();
+    modeIndicator.cancel();
+    Serial.println("ESP-NOW: START accepted; 6 flashes (1 second), motor OFF");
+  }
+  if (oldRemoteState == senme::RemoteRun::State::Notifying &&
+      remoteSnapshot.state() == senme::RemoteRun::State::Running) {
     Serial.println("ESP-NOW: RUNNING (60 seconds)");
   }
   if (oldRemoteState == senme::RemoteRun::State::Cooldown &&

@@ -152,7 +152,8 @@ void testRemoteRun() {
   Settings settings;
   settings.motorPercent = 80;
   // Repeat across millis() overflow.
-  for (const uint32_t origin : {100u, std::numeric_limits<uint32_t>::max() - 10000,
+  for (uint32_t origin : {100u, std::numeric_limits<uint32_t>::max() - 500,
+                                std::numeric_limits<uint32_t>::max() - 10000,
                                 std::numeric_limits<uint32_t>::max() - 62000}) {
     RemoteRun run;
     assert(!run.receive(start, 5));
@@ -178,6 +179,22 @@ void testRemoteRun() {
     assert(run.busy());
     assert(!run.receive(start, 6)); // Burst before loop cannot queue a second run.
     run.tick(origin);
+    unsigned pulses = 0;
+    bool wasOn = false;
+    for (uint32_t t = 0; t < 1000; ++t) {
+      run.tick(origin + t);
+      const auto out = run.output(origin + t, settings);
+      assert(run.state() == RemoteRun::State::Notifying && run.busy());
+      assert(!run.receive(start, 5) && !run.stopDue(origin + t));
+      assert(out.led == LedPattern::Steady && out.motorPercent == 0);
+      const bool on = out.brightness == 1;
+      if (on && !wasOn) ++pulses;
+      wasOn = on;
+    }
+    assert(pulses == 6 && !wasOn);
+    origin += 1000;
+    run.tick(origin);
+    assert(run.state() == RemoteRun::State::Running);
     auto at = [&](uint32_t elapsed) { return run.output(origin + elapsed, settings); };
     assert(at(0).motorPercent == 55 && at(0).phase == 2);
     assert(near(at(7500).motorPercent, 67.5f));
@@ -216,21 +233,25 @@ void testRemoteRun() {
     assert(run.state() == RemoteRun::State::Ready); // No replay of ignored requests.
     assert(run.receive(start, 6)); // Optional trailing NUL accepted.
     run.tick(origin + 100000);
-    assert(at(100000).led == LedPattern::Steady);
-    assert(near(at(100000).brightness, 0.0f));
-    assert(at(107500).motorPercent == 67.5f);
+    assert(at(100000).motorPercent == 0);
+    run.tick(origin + 101000);
+    assert(at(101000).led == LedPattern::Steady);
+    assert(near(at(101000).brightness, 0.0f));
+    assert(at(108500).motorPercent == 67.5f);
     run.confirmStopped(origin + 115000); // Early acknowledgement cannot reopen reception.
     assert(run.busy() && !run.receive(start, 5));
-    run.confirmStopped(origin + 160000);
+    run.confirmStopped(origin + 161000);
     assert(!run.receive(start, 5));
-    run.tick(origin + 162999);
+    run.tick(origin + 163999);
     assert(!run.receive(start, 5));
-    run.tick(origin + 163000);
+    run.tick(origin + 164000);
     assert(run.receive(start, 5));
-    run.tick(origin + 163000);
-    assert(at(163000).motorPercent == 55 && at(163000).phase == 2);
+    run.tick(origin + 164000);
+    assert(at(164000).motorPercent == 0);
+    run.tick(origin + 165000);
+    assert(at(165000).motorPercent == 55 && at(165000).phase == 2);
     run.disable();
-    assert(at(107500).motorPercent == 0);
+    assert(at(108500).motorPercent == 0);
     assert(!run.receive(start, 5));
     run.enable(origin);
     assert(run.state() == RemoteRun::State::Ready);
@@ -309,12 +330,14 @@ void testStartRampLimits() {
     run.enable(0);
     assert(run.receive(start, 5));
     run.tick(0);
+    assert(run.output(999, settings).motorPercent == 0);
+    run.tick(1000);
     const float initial = target < 55 ? float(target) : 55.0f;
     float previous = initial;
     for (const uint32_t t : {0u, 1u, 7500u, 14999u, 15000u}) {
       const auto sequence = outputFor(Mode::Sequence, 20000 + t, settings);
       const auto edit = outputFor(Mode::EditMotor, t, settings);
-      const auto remote = run.output(t, settings);
+      const auto remote = run.output(1000 + t, settings);
       const float expected = initial + (target - initial) * t / 15000.0f;
       assert(near(sequence.motorPercent, expected));
       assert(near(edit.motorPercent, expected));
