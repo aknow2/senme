@@ -25,13 +25,13 @@ void testSequence() {
   assert(near(at(27500).motorPercent, 67.5f));
   assert(at(34999).phase == 2);
   assert(at(35000).phase == 3 && at(35000).motorPercent == 80);
-  assert(at(94999).phase == 3 && at(94999).motorPercent == 80);
-  assert(at(95000).phase == 4 && at(95000).motorPercent == 80);
-  assert(near(at(102500).motorPercent, 67.5f));
-  assert(at(109999).phase == 4);
-  assert(at(110000).phase == 1 && at(110000).motorPercent == 0);
-  assert(near(at(110000).brightness, 0));
-  assert(at(220000).phase == 1);
+  assert(at(64999).phase == 3 && at(64999).motorPercent == 80);
+  assert(at(65000).phase == 4 && at(65000).motorPercent == 80);
+  assert(near(at(72500).motorPercent, 67.5f));
+  assert(at(79999).phase == 4);
+  assert(at(80000).phase == 1 && at(80000).motorPercent == 0);
+  assert(near(at(80000).brightness, 0));
+  assert(at(160000).phase == 1);
   for (uint32_t t = 0; t < kCycleMs; ++t) {
     const auto out = at(t);
     assert(out.led == (t < 20000 ? LedPattern::Breathe :
