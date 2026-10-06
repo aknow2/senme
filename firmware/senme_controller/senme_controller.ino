@@ -303,7 +303,7 @@ void setup() {
 
 void loop() {
   const uint32_t now = millis();
-  // Rebase each cycle so millis() rollover cannot disturb the 110-second cycle.
+  // Rebase each cycle so millis() rollover cannot disturb the 80-second cycle.
   while (uint32_t(now - sequenceStartedAt) >= senme::kCycleMs) {
     sequenceStartedAt += senme::kCycleMs;
   }
