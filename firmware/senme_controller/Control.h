@@ -8,7 +8,7 @@ namespace senme {
 
 constexpr uint32_t kBlinkPeriodUs = 55550;
 constexpr uint32_t kOnStepUs = 500;
-constexpr uint32_t kCycleMs = 110000;
+constexpr uint32_t kCycleMs = 80000;
 constexpr uint32_t kMotorRampMs = 15000;
 constexpr uint32_t kEditStopMs = kMotorRampMs;
 constexpr float kMotorStartPercent = 55.0f;

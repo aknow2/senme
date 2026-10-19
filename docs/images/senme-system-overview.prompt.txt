@@ -1,0 +1,19 @@
+Method: built-in image_gen
+Date: 2026-10-17
+
+Latest edit prompt (built-in image_gen):
+Use case: precise-object-edit. Edit the supplied senme-system-overview.png. Keep ONLY the existing top title "千目灯籠｜構成ポンチ絵" and the two upper hardware panels "送信側：鈴を振る" and "受信側：光と回転", including all their existing devices, Japanese labels and arrows. Remove the entire lower "設計・開発" section, all three development cards, and the bottom footer. Reframe the canvas to a wide horizontal image fitting only the retained upper part with a small white bottom margin; do not leave a blank lower half. Preserve the upper diagram as faithfully as possible: original illustrations, labels, two ESP32 boards, two MOSFET modules, ESP-NOW dashed link, teal and orange panel outlines, title, original white background and colors. Do not add, redesign, or change any hardware or connections. This is essentially a crop of the top hardware diagram.
+
+Initial prompt:
+Create a Japanese illustrated engineering architecture sketch, landscape 3:2, white background, navy text, teal and orange accents, legible large Japanese labels. Title "千目灯籠｜構成ポンチ絵".
+Upper 2/3: two groups. Left titled "送信側：鈴を振る". Draw a BLACK OCTAGONAL CLOSED BOX resting on a tabletop with shaking marks (NOT hanging bell), beside board "MPU6050" subtitle "加速度センサー", arrow "I2C" to board "ESP32" subtitle "sense_sender". Small contextual battery icon "電池". One dashed arrow from sender ESP32 to receiver ESP32 labeled "ESP-NOW / START".
+Right group "受信側：光と回転". Board "ESP32" subtitle "senme_controller". Knob "ロータリーエンコーダー" arrow into ESP32. Two distinct output chains: ESP32 arrow "RMT" to "MOSFET" to drawing LED strip labeled "24V COB LEDテープ"; ESP32 arrow "PWM" to second "MOSFET" to "DCモーター" then "ギア機構" then a simple sphere with repeated eye patterns labeled "球体シェード". Arrange without crossed arrows. Separate contextual icon "負荷用電源", no detailed power wiring.
+Bottom third: three cards under "設計・開発".
+First card "球体シミュレータ" / "TypeScript + Three.js + Vite" / "3Dプレビュー・形状調整・STL出力", draw monitor showing tiled sphere.
+Second card "機構CAD" / "OpenSCAD + BOSL2" / "SCAD → STL → 3Dプリント", draw gear and bracket.
+Third card "制御ソフト" / "C++ / Arduino-ESP32" / "Arduino CLI / Bash", draw code window.
+Footer "構成の概念図。外観・配線・寸法は簡略化。" "シミュレータは形状確認用。荷重・摩擦の物理解析は行いません。"
+Exactly two ESP32 boards and exactly two MOSFET drivers. No cloud, phone, router. No invented model numbers. Clear logical connections, ample whitespace, conceptual hand drawn hardware illustration style with crisp typography.
+
+Edit prompt:
+Edit this architecture infographic with only these corrections: move the rotary encoder and its label ABOVE the receiver ESP32 and draw a short downward teal arrow into ESP32. Extend the orange dashed ESP-NOW / START arrow horizontally so that it terminates directly on the LEFT EDGE of the receiver ESP32 board, never on the encoder. Add small right-facing arrows between motor driver and DC motor, motor and gears, gears and sphere. In the CAD decorative code window replace 'include <BOSL2.scad>' with 'include <BOSL2/std.scad>'. Keep all remaining Japanese text, layout panels, illustrations, colors, title and footer unchanged, adjusting local spacing only as needed.

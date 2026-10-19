@@ -2,6 +2,10 @@
 
 Senmeの機構設計・ファームウェアと、球体リソファン作成用のsimulatorをまとめたフォルダです。
 
+[開発記録：構成ポンチ絵・技術スタック](docs/開発記録.md)
+
+![千目灯籠の構成ポンチ絵](docs/images/senme-system-overview.png)
+
 - ルートの `.scad`・`.stl`・画像、`BOSL2/`、`octagonal_bell/`、`firmware/` などは `../6ro_art/senme` からコピーしています。
 - `simulator/` は `../360li/experimental` を元にした独立したWebアプリです。必要な共通コード・依存関係の設定・テストをすべて内包しています。
 
